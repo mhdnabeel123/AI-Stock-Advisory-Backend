@@ -5,6 +5,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from models.ml_engine import MLEngine
@@ -16,8 +17,19 @@ app = FastAPI(
     version="1.0"
 )
 
+# -------------------------------------------------
+# ✅ CORS (THIS FIXES YOUR FRONTEND ISSUE)
+# -------------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # allow all for now
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ------------------------
-# GLOBAL ML ENGINE (lazy-loaded)
+# GLOBAL ML ENGINE
 # ------------------------
 ml_engine = None
 
@@ -38,14 +50,18 @@ class ChatResponse(BaseModel):
 
 
 # ------------------------
-# Startup event (IMPORTANT)
+# Startup
 # ------------------------
 @app.on_event("startup")
 def load_ml_engine():
     global ml_engine
     print("🚀 Loading ML Engine...")
-    ml_engine = MLEngine()
-    print("✅ ML Engine loaded")
+    try:
+        ml_engine = MLEngine()
+        print("✅ ML Engine loaded")
+    except Exception as e:
+        print("⚠️ ML Engine failed, running fallback mode:", e)
+        ml_engine = None
 
 
 # ------------------------
@@ -63,7 +79,7 @@ def health():
 def chat(data: ChatRequest):
     if ml_engine is None:
         return {
-            "reply": "System is warming up, please try again.",
+            "reply": "Market data is temporarily unavailable. Please try again later.",
             "action": "HOLD",
             "invest_amount": 0
         }
@@ -76,6 +92,7 @@ def chat(data: ChatRequest):
         capital=data.capital,
         risk=data.risk
     )
+
     decision = agent.decide(prob_up)
 
     return {
