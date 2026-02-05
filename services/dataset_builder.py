@@ -14,17 +14,22 @@ def build_ml_dataset(symbol: str = "INFY.NS"):
     Prepare ML-ready dataset from stock data
     """
 
-    # Fetch and engineer features
+    # 1️⃣ Fetch raw stock data
     df = fetch_stock_data(symbol)
+
+    if df is None:
+        raise RuntimeError("Market data unavailable. Cannot build dataset.")
+
+    # 2️⃣ Add technical indicators
     df = add_technical_indicators(df)
 
-    # Target: next day price direction
+    # 3️⃣ Target: next-day price movement
     df["target"] = (df["Close"].shift(-1) > df["Close"]).astype(int)
 
-    # Drop rows with NaN values (due to indicators)
+    # 4️⃣ Drop NaN rows (from indicators + shift)
     df.dropna(inplace=True)
 
-    # Feature set
+    # 5️⃣ Feature columns
     features = [
         "sma_20",
         "sma_50",
@@ -37,7 +42,7 @@ def build_ml_dataset(symbol: str = "INFY.NS"):
     X = df[features]
     y = df["target"]
 
-    # Time-based train-test split (NO random split)
+    # 6️⃣ Time-based split (no data leakage)
     split_index = int(len(df) * 0.8)
 
     X_train = X.iloc[:split_index]
