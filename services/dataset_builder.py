@@ -11,14 +11,16 @@ from services.feature_engineering import add_technical_indicators
 
 def build_ml_dataset(symbol: str = "INFY.NS"):
     """
-    Prepare ML-ready dataset from stock data
+    Prepare ML-ready dataset from stock data.
+    SAFE version: never crashes app startup.
     """
 
     # 1️⃣ Fetch raw stock data
     df = fetch_stock_data(symbol)
 
+    # ❗ IMPORTANT: do NOT crash if market data unavailable
     if df is None:
-        raise RuntimeError("Market data unavailable. Cannot build dataset.")
+        return None, None, None, None
 
     # 2️⃣ Add technical indicators
     df = add_technical_indicators(df)
@@ -56,7 +58,10 @@ def build_ml_dataset(symbol: str = "INFY.NS"):
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = build_ml_dataset()
 
-    print("Training data shape:", X_train.shape)
-    print("Testing data shape:", X_test.shape)
-    print("\nSample training rows:")
-    print(X_train.head())
+    if X_train is None:
+        print("⚠️ Market data unavailable. Dataset not built.")
+    else:
+        print("Training data shape:", X_train.shape)
+        print("Testing data shape:", X_test.shape)
+        print("\nSample training rows:")
+        print(X_train.head())
