@@ -12,31 +12,34 @@ from models.ml_engine import MLEngine
 from agent.decision_agent import DecisionAgent
 
 
+# -------------------------------------------------
+# App config
+# -------------------------------------------------
 app = FastAPI(
     title="AI Stock Advisory API",
     version="1.0"
 )
 
 # -------------------------------------------------
-# ✅ CORS (THIS FIXES YOUR FRONTEND ISSUE)
+# CORS (Frontend access)
 # -------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # allow all for now
+    allow_origins=["*"],     # allow all (restrict later)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ------------------------
-# GLOBAL ML ENGINE
-# ------------------------
+# -------------------------------------------------
+# Global ML engine (lazy safe)
+# -------------------------------------------------
 ml_engine = None
 
 
-# ------------------------
+# -------------------------------------------------
 # Schemas
-# ------------------------
+# -------------------------------------------------
 class ChatRequest(BaseModel):
     message: str
     capital: int = 10000
@@ -49,34 +52,41 @@ class ChatResponse(BaseModel):
     invest_amount: int
 
 
-# ------------------------
+# -------------------------------------------------
 # Startup
-# ------------------------
+# -------------------------------------------------
 @app.on_event("startup")
 def load_ml_engine():
     global ml_engine
     print("🚀 Loading ML Engine...")
+
     try:
         ml_engine = MLEngine()
-        print("✅ ML Engine loaded")
+        print("✅ ML Engine loaded successfully")
     except Exception as e:
-        print("⚠️ ML Engine failed, running fallback mode:", e)
+        print("⚠️ ML Engine failed. Running in fallback mode.")
+        print(e)
         ml_engine = None
 
 
-# ------------------------
+# -------------------------------------------------
 # Health check
-# ------------------------
+# -------------------------------------------------
 @app.get("/")
 def health():
-    return {"status": "AI Stock Advisory API is running"}
+    return {
+        "status": "AI Stock Advisory API is running",
+        "ml_engine": "loaded" if ml_engine else "fallback"
+    }
 
 
-# ------------------------
+# -------------------------------------------------
 # Chat endpoint
-# ------------------------
+# -------------------------------------------------
 @app.post("/chat", response_model=ChatResponse)
 def chat(data: ChatRequest):
+
+    # Fallback mode
     if ml_engine is None:
         return {
             "reply": "Market data is temporarily unavailable. Please try again later.",
@@ -84,10 +94,10 @@ def chat(data: ChatRequest):
             "invest_amount": 0
         }
 
-    # ML prediction
+    # Predict (placeholder ML probability)
     prob_up = ml_engine.predict_probability()
 
-    # Decision agent
+    # Decision logic
     agent = DecisionAgent(
         capital=data.capital,
         risk=data.risk
